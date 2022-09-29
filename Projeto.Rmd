@@ -1,0 +1,198 @@
+---
+title: "Untitled"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### *Teste de Hipóteses*
+
+```{r}
+ui <- fluidPage(
+titlePanel("Testes de Hipóteses"),
+
+    # Sidebar with a slider input for number of bins 
+    sidebarLayout(
+        sidebarPanel(
+          radioButtons("dados", "Escolher dados",
+                       c("Dados 1" = "d1",
+                         "Dados 2" = "d2")
+          ),
+          sliderInput("mu0", "Selecione mu0",
+                      min = 0, max = 30, value = 15
+          ),
+          numericInput("sig", "Variância(Sigma^2):", 50, min = 1.0, max = 100.0),
+          
+          sliderInput("alfa", "Selecione alfa",
+                      min = 0.01, max = 0.10, value = 0.05
+          ),
+          
+          radioButtons("tipo", "Tipo do teste",
+                       c("Bilateral" = "bi",
+                         "Esquerda" = "esq",
+                         "Direita" = "dir"))
+        ),
+
+        # Show a plot of the generated distribution
+        mainPanel(
+          tableOutput('table')
+        )
+    )
+)
+server <- function(input, output) {
+
+  dados = reactive(input$dados)
+  escolha_dados = renderText(dados())
+  
+  x = reactive({
+    if(escolha_dados() == "d1"){
+      c(2,5,13, 27, 21, 10, 9, 15)
+    }else if(escolha_dados() == "d2"){
+      c(15,2,13, 15, 12, 10, 5, 4)
+    }
+  })
+  
+  
+  n = reactive(length(x()))
+  xbarra = reactive(mean(x()))
+  sig = reactive(input$sig)
+  sig_xbar = reactive(sqrt(sig())/sqrt(n()))
+  
+  mu0 = reactive({
+    as.integer(input$mu0)
+  })
+  
+  alfa = reactive(as.numeric(input$alfa))
+  
+  tipo = reactive(input$tipo)
+  teste = renderText(tipo())
+  
+  p = reactive({
+    if(teste() == "bi"){
+      1 - alfa() + alfa()/2
+    }else if(teste() == "esq"){
+      alfa()
+    }else{
+      1-alfa()
+    }
+  })
+
+
+  ztab = reactive(
+    as.numeric(qnorm(p()))
+  )
+
+
+  zcalc = reactive(
+    as.numeric((xbarra()-mu0())/sig_xbar())
+  )
+  
+    
+  output$table <- renderTable(
+      if(zcalc() < ztab() & zcalc() > -ztab()){
+        data.frame(Resultado = paste0('Aceitamos H0 ao nível de sig. = ', alfa()))
+      }else{
+        data.frame(Resultado = paste0('Rejeitamos H0 ao nível de sig. = ', alfa()))
+      }
+    )
+  
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### *Intervalo de Confiaça*
+
+```{r}
+ui <- fluidPage(
+  titlePanel("Intervalo de Confiança"),
+  sidebarLayout(
+   sidebarPanel(
+ sliderInput("alfa", label = "Alfa",
+              min = 0.90, max = 1.0, value = 0.95, step = 0.001),
+
+  textInput("media","Média","3", width ="20%" ),
+
+ sliderInput("sig", "Sigma^2", 50, min = 1.0, max = 100.0),
+
+ textInput("N","Número de Elementos","3", width ="20%" ),
+
+    
+ ),
+        mainPanel(
+          tableOutput('table')
+        )
+ )
+  
+)
+
+server <- function(input, output, session) {
+  
+
+  alfa = reactive(input$alfa)
+  sig = reactive(input$sig)
+  N = reactive(as.numeric(input$N))
+  media = reactive(as.numeric(input$media))
+
+  ztab = reactive(
+    as.numeric(qnorm(alfa()))
+    )
+
+  Li = reactive(
+   as.numeric(media() - (ztab()*sig()/sqrt(N()))
+  )
+)
+  Ls =  reactive(
+      as.numeric(media() + (ztab()*sig()/sqrt(N()))
+  )
+)
+  output$table <- renderTable(
+    data.frame(Resultado = paste(Li() ,";" ,Ls() ))
+  )
+
+
+
+}
+
+shinyApp(ui, server)
+
+
+```
+
+### *Regressão Linear*
+
+```{r}
+
+  x = c(1,2,4,6,7,12)
+  y = c(2,3,5,9,11,14)
+  
+  plot(x,y)
+
+
+  reg = lm(y~x)
+  A = reg$coef[1]
+  B = reg$coef[2]
+  
+  abline(a=A, b=B)
+  
+  paste0("y=",A,"+",B,"x")
+
+
+
+```
+
